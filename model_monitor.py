@@ -8,12 +8,6 @@ log.basicConfig(level=logging.DEBUG)
 
 
 class ModelMonitor(object):
-    """
-    Monitors the model during training and testing. Logs the error and accuracy values
-    and creates checkpoints whenever the mean validation error is being improved.
-    Optionally dumps the model status on KeyInterrupt.
-    """
-
     def __init__(self, outputs, name='pixel-rnn'):
         self.network_outputs = outputs
         self.name = name
