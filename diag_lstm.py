@@ -17,7 +17,10 @@ class DiagLSTMLayer(lasagne.layers.Layer):
 
     def get_output_for(self, input_to_state, **kwargs):
         # skew the input in the right direction
-        skewed = skew(input_to_state, backwards=self.backwards)
+        if self.backwards:
+            input_to_state = input_to_state[:, :, :, ::-1]
+
+        skewed = skew(input_to_state)
         K_ss = self.K_ss
         b = self.b
         batch_size = self.input_shape[0]
@@ -57,15 +60,14 @@ class DiagLSTMLayer(lasagne.layers.Layer):
                                        sequences=skewed.dimshuffle((3, 0, 1, 2)),
                                        outputs_info=[T.zeros(column_shape, dtype=theano.config.floatX),
                                                      T.zeros(column_shape, dtype=theano.config.floatX)],
-                                       go_backwards=self.backwards,
                                        allow_gc=True)
         _, hs = outputs
-        if self.backwards:
-            # we need to reverse the columns as they were processed in opposite order
-            hs = hs[::-1]
-
         hs = hs.dimshuffle((1, 2, 3, 0))
-        return unskew(hs, backwards=self.backwards)
+        hs = unskew(hs)
+        if self.backwards:
+            # we need to reverse the columns again
+            hs = hs[:, :, :, ::-1]
+        return hs
 
 
 if __name__ == "__main__":
