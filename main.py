@@ -25,7 +25,8 @@ def pixel_softmax_reshape(network, num_colors=1):
     # we'll now interpret the channel values at each pixel as softmax values
     # for each of the colors
     network = MaskedConv2D(incoming=network, num_filters=256 * num_colors,
-                           filter_size=(1, 1), mask="b", nonlinearity=lasagne.nonlinearities.identity)
+                           filter_size=(1, 1), mask_type="b", nonlinearity=lasagne.nonlinearities.identity,
+                           n_colors=n_colors)
     network = lasagne.layers.ReshapeLayer(network,
                                           (-1, num_colors, 256, original_shape[2], original_shape[3]))
 
@@ -51,16 +52,18 @@ if __name__ == "__main__":
     h = 16
     height = width = 28
     out_channels = 32
-    num_colors = 1
+    n_colors = 1
 
     images = T.tensor4("images")
     labels = T.itensor4("labels")
     input = lasagne.layers.InputLayer(shape=(None, input_channels, height, width), input_var=images)
     filter_size = (7, 7)
-    network = MaskedConv2D(incoming=input, num_filters=h, filter_size=(7, 7), mask="a")
-    for i in range(0, 3):
-        forward_in = MaskedConv2D(incoming=network, num_filters=4 * h, filter_size=(1, 1), mask="b")
-        backward_in = MaskedConv2D(incoming=network, num_filters=4 * h, filter_size=(1, 1), mask="b")
+    network = MaskedConv2D(incoming=input, num_filters=h, filter_size=(7, 7), mask_type="a", n_colors=n_colors)
+    for i in range(0, 1):
+        forward_in = MaskedConv2D(incoming=network, num_filters=4 * h, filter_size=(1, 1), mask_type="b",
+                                  n_colors=n_colors)
+        backward_in = MaskedConv2D(incoming=network, num_filters=4 * h, filter_size=(1, 1), mask_type="b",
+                                   n_colors=n_colors)
         forward = DiagLSTMLayer(incoming=forward_in)
         backward = DiagLSTMLayer(incoming=backward_in, backwards=True)
 
@@ -78,9 +81,10 @@ if __name__ == "__main__":
     for i in range(0, 2):
         network = lasagne.layers.NonlinearityLayer(network, lasagne.nonlinearities.rectify)
         network = MaskedConv2D(incoming=network, num_filters=out_channels,
-                               filter_size=(1, 1), mask="b", nonlinearity=lasagne.nonlinearities.identity)
+                               filter_size=(1, 1), mask_type="b", nonlinearity=lasagne.nonlinearities.identity,
+                               n_colors=n_colors)
 
-    network = pixel_softmax_reshape(network, num_colors=num_colors)
+    network = pixel_softmax_reshape(network, num_colors=n_colors)
     softmax_output = lasagne.layers.get_output(network)
     softmax_output_flat = T.nnet.softmax(T.reshape(softmax_output, newshape=(-1, softmax_output.shape[-1])))
     labels_flat = T.flatten(labels)

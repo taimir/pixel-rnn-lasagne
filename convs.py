@@ -1,7 +1,7 @@
 import theano.tensor as T
 import lasagne
 
-from masks import mask_a, mask_b
+from masks import mask
 
 
 class MaskedConv2D(lasagne.layers.Conv2DLayer):
@@ -9,7 +9,7 @@ class MaskedConv2D(lasagne.layers.Conv2DLayer):
     Note: the layer does not have a non-linearity on top of it
     """
 
-    def __init__(self, incoming, num_filters, filter_size, mask="a", stride=(1, 1), untie_biases=False,
+    def __init__(self, incoming, num_filters, filter_size, mask_type, n_colors, stride=(1, 1), untie_biases=False,
                  W=lasagne.init.GlorotUniform(),
                  b=lasagne.init.Constant(0.),
                  nonlinearity=lasagne.nonlinearities.identity, **kwargs):
@@ -17,13 +17,11 @@ class MaskedConv2D(lasagne.layers.Conv2DLayer):
                                            pad="same", untie_biases=untie_biases, W=W, b=b,
                                            nonlinearity=nonlinearity,
                                            convolution=T.nnet.conv2d, **kwargs)
-        self.mask = mask
+        self.mask_type = mask_type
+        self.n_colors = n_colors
 
     def convolve(self, input, **kwargs):
-        if self.mask == "a":
-            W = mask_a(self.W)
-        elif self.mask == "b":
-            W = mask_b(self.W)
+        W = mask(self.W, n_colors=self.n_colors, type=self.mask_type)
         conved = self.convolution(input, W,
                                   self.input_shape, self.get_W_shape(),
                                   subsample=self.stride,
@@ -38,9 +36,10 @@ if __name__ == "__main__":
 
     input = T.tensor4("filter")
 
-    input_layer = lasagne.layers.InputLayer(input_var=input, shape=(None, 3, 9, 9))
-    network = MaskedConv2D(incoming=input_layer, num_filters=4, filter_size=(3, 3))
+    input_layer = lasagne.layers.InputLayer(input_var=input, shape=(None, 1, 3, 3))
+    network = MaskedConv2D(incoming=input_layer, num_filters=4, filter_size=(3, 3), mask_type="a", n_colors=1)
     output = lasagne.layers.get_output(network)
     f = theano.function(inputs=[input], outputs=output)
-    convolved = f(np.ones((1, 3, 9, 9), dtype=np.float32))
+    test_image = np.ones((1, 1, 3, 3), dtype=np.float32)
+    convolved = f(test_image)
     print(convolved)
