@@ -13,9 +13,9 @@ from model_monitor import ModelMonitor
 
 log.basicConfig(level=logging.DEBUG)
 
-from nolearn.lasagne.visualize import draw_to_file
+# from nolearn.lasagne.visualize import draw_to_file
 
-os.environ["THEANO_FLAGS"] = "device=gpu0,lib.cnmem=1"
+os.environ["THEANO_FLAGS"] = "device=gpu0,lib.cnmem=0"
 
 
 def pixel_softmax_reshape(network, num_colors=1):
@@ -106,9 +106,9 @@ if __name__ == "__main__":
     test_pass = theano.function(inputs=[images],
                                 outputs=T.argmax(softmax_output, axis=-1))
 
-    layers_debug = lasagne.layers.get_all_layers(network)
+    # layers_debug = lasagne.layers.get_all_layers(network)
     # outputs_debug = lasagne.layers.get_output(layers_debug)
-    draw_to_file(layers_debug, "data/network_graph.png")
+    # draw_to_file(layers_debug, "data/network_graph.png")
 
     # Print a theano graph for inspection
     # theano.printing.pydotprint(softmax_output, outfile="data/pixel_rnn.png", var_with_name_simple=True)
@@ -140,34 +140,36 @@ if __name__ == "__main__":
 
     minibatch_count = X.shape[0] // batch_size
     val_minibatch_count = X_valid.shape[0] // batch_size
-    # try:
-    #     for e in range(0, 10):
-    #         for i in range(0, minibatch_count):
-    #             y_next = y[i * batch_size:(i + 1) * batch_size]
-    #             X_next = X[i * batch_size:(i + 1) * batch_size]
-    #             loss, train_image = train_pass(X_next, y_next)
-    #             if i % 100 == 0:
-    #                 log.info("minibatch {} loss: {}".format(i, loss))
-    #                 save_image(train_image[0, 0], filename="data/trained_images/image_{}.jpg".format(i))
-    #
-    #                 val_losses = list()
-    #                 for j in range(0, val_minibatch_count):
-    #                     y_val_next = y_valid[j * batch_size:(j + 1) * batch_size]
-    #                     x_val_next = X_valid[j * batch_size:(j + 1) * batch_size]
-    #                     val_loss, _ = validation_pass(x_val_next, y_val_next)
-    #                     val_losses.append(val_loss)
-    #                 mean_val_loss = np.array(val_losses).mean()
-    #                 log.info("validation: epoch {}, iteration {}, loss: {}".format(e, i, mean_val_loss))
-    #                 if mean_val_loss < best_loss:
-    #                     best_loss = mean_val_loss
-    #                     model_monitor.save_model(epoch_count=e, msg="_new_best"))
-    # except KeyboardInterrupt:
-    #     log.info("Training was interrupted. Proceeding with image generation.")
-    model_monitor.load_model(model_name="params_2ep_0.531473.npz", network=network)
+    try:
+        for e in range(0, 10):
+            for i in range(0, minibatch_count):
+                y_next = y[i * batch_size:(i + 1) * batch_size]
+                X_next = X[i * batch_size:(i + 1) * batch_size]
+                loss, train_image = train_pass(X_next, y_next)
+                if i % 100 == 0:
+                    log.info("minibatch {} loss: {}".format(i, loss))
+                    save_image(train_image[0, 0], filename="data/trained_images/image_{}.jpg".format(i))
+                    save_image(y_next[0, 0], filename="data/original_images/image_{}.jpg".format(i))
+
+                    val_losses = list()
+                    for j in range(0, val_minibatch_count):
+                        y_val_next = y_valid[j * batch_size:(j + 1) * batch_size]
+                        x_val_next = X_valid[j * batch_size:(j + 1) * batch_size]
+                        val_loss, _ = validation_pass(x_val_next, y_val_next)
+                        val_losses.append(val_loss)
+                    mean_val_loss = np.array(val_losses).mean()
+                    log.info("validation: epoch {}, iteration {}, loss: {}".format(e, i, mean_val_loss))
+                    if mean_val_loss < best_loss:
+                        best_loss = mean_val_loss
+                        model_monitor.save_model(epoch_count=e, msg="_new_best")
+    except KeyboardInterrupt:
+        log.info("Training was interrupted. Proceeding with image generation.")
+
+    # model_monitor.load_model(model_name="params_2ep_0.531473.npz", network=network)
 
     for i in range(0, 10):
         image = X_test[[i], :, :, :]
-        # image[:, :, height // 2:, :] = 0
+        image[:, :, height // 2:, :] = 0
 
         rest = height - (height // 2)
         for row_i in range(0, rest):
@@ -178,4 +180,4 @@ if __name__ == "__main__":
                     image = image + data_mean
                     image[:, chan_i, height // 2 + row_i, col_i] = new_image[:, chan_i, height // 2 + row_i, col_i]
                     image = image - data_mean
-        save_image(image[0, 0] + data_mean[0, 0], filename="data/generated_second/image_{}.jpg".format(i))
+        save_image(image[0, 0] + data_mean[0, 0], filename="data/generated/image_{}.jpg".format(i))

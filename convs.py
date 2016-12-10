@@ -21,7 +21,8 @@ class MaskedConv2D(lasagne.layers.Conv2DLayer):
         self.n_colors = n_colors
 
     def convolve(self, input, **kwargs):
-        W = mask(self.W, n_colors=self.n_colors, type=self.mask_type)
+        W = self.W * mask(self.filter_size, n_out_chan=self.num_filters, n_in_chan=self.input_shape[1],
+                          n_colors=self.n_colors, type=self.mask_type)
         conved = self.convolution(input, W,
                                   self.input_shape, self.get_W_shape(),
                                   subsample=self.stride,

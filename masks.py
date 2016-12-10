@@ -7,31 +7,32 @@ import logging
 log.basicConfig(level=logging.DEBUG)
 
 
-def mask_spatial_context(filter, center):
+def mask_spatial_context(m, center):
     # zero out context connections
-    filter = T.set_subtensor(filter[:, :, center[0] + 1:, :], 0)
-    filter = T.set_subtensor(filter[:, :, center[0], center[1] + 1:], 0)
-    return filter
+    m[:, :, center[0] + 1:, :] = 0
+    m[:, :, center[0], center[1] + 1:] = 0
+    return m
 
 
-def mask(filter, n_colors, type):
+def mask(filter_size, n_in_chan, n_out_chan, n_colors, type):
     """
     :param filter: 4d symbolic filter
             (output_channels x input_channels x height x width)
     :return: masked filter
     """
+    m = np.ones((n_out_chan, n_in_chan, filter_size[0], filter_size[1]), dtype=theano.config.floatX)
 
-    center = (filter.shape[-2] // 2, filter.shape[-1] // 2)
-    filter = mask_spatial_context(filter, center)
+    center = (filter_size[0] // 2, filter_size[1] // 2)
+    m = mask_spatial_context(m, center)
 
     # mask the connections between input channels and output channels
-    out_part_size = filter.shape[0] // n_colors
-    in_part_size = filter.shape[1] // n_colors
+    out_part_size = n_out_chan // n_colors
+    in_part_size = n_in_chan // n_colors
 
     # consider the residuals in case the out- or in-channel shapes
     # are not divisible by the number of colors
-    out_residual = filter.shape[0] % n_colors
-    in_residual = filter.shape[1] % n_colors
+    out_residual = n_out_chan % n_colors
+    in_residual = n_in_chan % n_colors
 
     assert (type == "a" or type == "b"), "Mask type can be only 'a' or 'b'"
 
@@ -41,21 +42,22 @@ def mask(filter, n_colors, type):
     next_out_part_pos = out_residual + out_part_size
     next_in_part_pos = in_residual + in_part_size
     for i in range(n_colors):
-        masked_subtensor = filter[curr_out_part_pos:next_out_part_pos,
-                           curr_in_part_pos if type == "a" else next_in_part_pos:,
-                           center[0], center[1]]
+        m[
+        curr_out_part_pos:next_out_part_pos,
+        curr_in_part_pos if type == "a" else next_in_part_pos:,
+        center[0],
+        center[1]
+        ] = 0
         curr_in_part_pos = next_in_part_pos
         curr_out_part_pos = next_out_part_pos
         next_in_part_pos += in_part_size
         next_out_part_pos += out_part_size
-        filter = T.set_subtensor(masked_subtensor, 0)
-
-    return filter
+    return m
 
 
 if __name__ == "__main__":
     input = T.tensor4("filter")
-    output = mask(input, n_colors=3, type="b")
+    output = input * mask(filter_size=(3, 3), n_out_chan=4, n_in_chan=4, n_colors=3, type="b")
     f = theano.function(inputs=[input], outputs=output)
 
     masked = f(np.ones((4, 4, 3, 3), dtype=np.float32))
