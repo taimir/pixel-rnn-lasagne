@@ -37,7 +37,8 @@ class DiagLSTMLayer(lasagne.layers.Layer):
                                                           filter_size=(2,),
                                                           W=K_ss, b=b,
                                                           pad="full",
-                                                          nonlinearity=lasagne.nonlinearities.identity)
+                                                          nonlinearity=lasagne.nonlinearities.identity,
+                                                          flip_filters=False)
             convolved_states = lasagne.layers.get_output(convolved_states)
             # "full" adds one unneeded element at the end for filter_size=2
             convolved_states = convolved_states[:, :, :-1]
@@ -50,7 +51,7 @@ class DiagLSTMLayer(lasagne.layers.Layer):
             i = T.nnet.sigmoid(lstm_parts[:, 2 * in_chan_dim:3 * in_chan_dim])
             g = T.tanh(lstm_parts[:, 3 * in_chan_dim:])
 
-            c = f * c_prev + i * g
+            c = (f * c_prev) + (i * g)
             h = o * T.tanh(c)
 
             return c, h  # dims of both are: (batch_size x in_chan_dim x height)
@@ -78,10 +79,11 @@ if __name__ == "__main__":
     out = lasagne.layers.Conv1DLayer(incoming=in_layer, num_filters=1,
                                      filter_size=(2,),
                                      W=np.ones((1, 1, 2), dtype=np.float32), b=lasagne.init.Constant(0.),
-                                     pad="full",
-                                     nonlinearity=lasagne.nonlinearities.identity)
+                                     pad="valid",
+                                     nonlinearity=lasagne.nonlinearities.identity,
+                                     flip_filters=False)
     out_tensor = lasagne.layers.get_output(out)
     f = theano.function(inputs=[in_tensor], outputs=out_tensor)
 
-    print(f(np.ones((1, 1, 5), dtype=np.float32)))
+    print(f(np.array([0, 1, 2, 3, 4, 5], dtype=np.float32).reshape((1, 1, 6))))
     # TODO: test the LSTM layer

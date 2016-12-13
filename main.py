@@ -7,6 +7,7 @@ import scipy
 import colorlog as log
 import logging
 
+from pixel_softmax import pixel_softmax_reshape
 from convs import MaskedConv2D
 from diag_lstm import DiagLSTMLayer
 from model_monitor import ModelMonitor
@@ -18,26 +19,6 @@ log.basicConfig(level=logging.DEBUG)
 os.environ["THEANO_FLAGS"] = "device=gpu0,lib.cnmem=0"
 
 
-def pixel_softmax_reshape(network, num_colors=1):
-    # save the original shape
-    original_shape = network.output_shape
-
-    # we'll now interpret the channel values at each pixel as softmax values
-    # for each of the colors
-    network = MaskedConv2D(incoming=network, num_filters=256 * num_colors,
-                           filter_size=(1, 1), mask_type="b", nonlinearity=lasagne.nonlinearities.identity,
-                           n_colors=n_colors)
-    network = lasagne.layers.ReshapeLayer(network,
-                                          (-1, num_colors, 256, original_shape[2], original_shape[3]))
-
-    # dimensions are now:
-    # (batch_size x color x height x width x 256)
-    # the output of this still needs to be flattened
-    network = lasagne.layers.DimshuffleLayer(network, (0, 1, 3, 4, 2))
-
-    return network
-
-
 def save_image(image, filename):
     """
     images.shape: (channels x height x width)
@@ -47,7 +28,7 @@ def save_image(image, filename):
 
 if __name__ == "__main__":
     # constants
-    batch_size = 32
+    batch_size = 16
     input_channels = 1
     h = 16
     height = width = 28
@@ -84,12 +65,21 @@ if __name__ == "__main__":
                                filter_size=(1, 1), mask_type="b", nonlinearity=lasagne.nonlinearities.identity,
                                n_colors=n_colors)
 
-    network = pixel_softmax_reshape(network, num_colors=n_colors)
-    softmax_output = lasagne.layers.get_output(network)
-    softmax_output_flat = T.nnet.softmax(T.reshape(softmax_output, newshape=(-1, softmax_output.shape[-1])))
-    labels_flat = T.flatten(labels)
+    if n_colors > 1:
+        network = pixel_softmax_reshape(network, n_colors=n_colors)
+        output = lasagne.layers.get_output(network)
+        softmax_output_flat = T.nnet.softmax(T.reshape(output, newshape=(-1, output.shape[-1])))
+        labels_flat = T.flatten(labels)
 
-    loss = T.mean(lasagne.objectives.categorical_crossentropy(softmax_output_flat, labels_flat))
+        loss = T.mean(lasagne.objectives.categorical_crossentropy(softmax_output_flat, labels_flat))
+        output = T.argmax(output, axis=-1)
+    else:
+        network = MaskedConv2D(incoming=network, num_filters=1,
+                               filter_size=(1, 1), mask_type="b", nonlinearity=lasagne.nonlinearities.sigmoid,
+                               n_colors=n_colors)
+        output = lasagne.layers.get_output(network)
+        loss = T.mean(lasagne.objectives.binary_crossentropy(output, labels))
+
     params = lasagne.layers.get_all_params(network, trainable=True)
 
     train_updates = lasagne.updates.adam(loss_or_grads=loss,
@@ -97,26 +87,25 @@ if __name__ == "__main__":
                                          learning_rate=1e-3)
 
     train_pass = theano.function(inputs=[images, labels],
-                                 outputs=[loss, T.argmax(softmax_output, axis=-1)],
+                                 outputs=[loss, output],
                                  updates=train_updates)
 
     validation_pass = theano.function(inputs=[images, labels],
-                                      outputs=[loss, T.argmax(softmax_output, axis=-1)])
+                                      outputs=[loss, output])
 
     test_pass = theano.function(inputs=[images],
-                                outputs=T.argmax(softmax_output, axis=-1))
+                                outputs=output)
 
     # layers_debug = lasagne.layers.get_all_layers(network)
     # outputs_debug = lasagne.layers.get_output(layers_debug)
     # draw_to_file(layers_debug, "data/network_graph.png")
-
     # Print a theano graph for inspection
     # theano.printing.pydotprint(softmax_output, outfile="data/pixel_rnn.png", var_with_name_simple=True)
     # theano.printing.pydotprint(forward_pass, outfile="data/pixel_rnn_compiled.png", var_with_name_simple=True)
 
     model_monitor = ModelMonitor(outputs=network)
 
-    from mnist import load_data
+    from mnist import load_data, binarize
 
     data = load_data()
     x_train, x_valid, x_test = data['x_train'], data['x_valid'], data['x_test']
@@ -130,43 +119,44 @@ if __name__ == "__main__":
     y_test = x_test
     X_test = np.array(x_test, dtype=np.float32)
 
-    # center all data
-    data_mean = np.mean(X, axis=0, keepdims=True)
-    X = X - data_mean
-    X_valid = X_valid - data_mean
-    X_test = X_test - data_mean
+    # # center all data
+    # data_mean = np.mean(X, axis=0, keepdims=True)
+    # X = X - data_mean
+    # X_valid = X_valid - data_mean
+    # X_test = X_test - data_mean
 
     best_loss = 100
 
+    # train
     minibatch_count = X.shape[0] // batch_size
     val_minibatch_count = X_valid.shape[0] // batch_size
-    try:
-        for e in range(0, 10):
-            for i in range(0, minibatch_count):
-                y_next = y[i * batch_size:(i + 1) * batch_size]
-                X_next = X[i * batch_size:(i + 1) * batch_size]
-                loss, train_image = train_pass(X_next, y_next)
-                if i % 100 == 0:
-                    log.info("minibatch {} loss: {}".format(i, loss))
-                    save_image(train_image[0, 0], filename="data/trained_images/image_{}.jpg".format(i))
-                    save_image(y_next[0, 0], filename="data/original_images/image_{}.jpg".format(i))
+    # try:
+    #     for e in range(0, 10):
+    #         for i in range(0, minibatch_count):
+    #             y_next = y[i * batch_size:(i + 1) * batch_size]
+    #             X_next = X[i * batch_size:(i + 1) * batch_size]
+    #             loss, train_image = train_pass(X_next, y_next)
+    #             if i % 100 == 0:
+    #                 log.info("minibatch {} loss: {}".format(i, loss))
+    #                 save_image(binarize(train_image)[0, 0], filename="data/trained_images/image_{}.jpg".format(i))
+    #                 save_image(y_next[0, 0], filename="data/original_images/image_{}.jpg".format(i))
+    #
+    #                 val_losses = list()
+    #                 for j in range(0, val_minibatch_count):
+    #                     y_val_next = y_valid[j * batch_size:(j + 1) * batch_size]
+    #                     x_val_next = X_valid[j * batch_size:(j + 1) * batch_size]
+    #                     val_loss, _ = validation_pass(x_val_next, y_val_next)
+    #                     val_losses.append(val_loss)
+    #                 mean_val_loss = np.array(val_losses).mean()
+    #                 log.info("validation: epoch {}, iteration {}, loss: {}".format(e, i, mean_val_loss))
+    #                 if mean_val_loss < best_loss:
+    #                     best_loss = mean_val_loss
+    #                     model_monitor.save_model(epoch_count=e, msg="new_best")
+    # except KeyboardInterrupt:
+    #     log.info("Training was interrupted. Proceeding with image generation.")
+    model_monitor.load_model(model_name="params_2ep_new_best.npz", network=network)
 
-                    val_losses = list()
-                    for j in range(0, val_minibatch_count):
-                        y_val_next = y_valid[j * batch_size:(j + 1) * batch_size]
-                        x_val_next = X_valid[j * batch_size:(j + 1) * batch_size]
-                        val_loss, _ = validation_pass(x_val_next, y_val_next)
-                        val_losses.append(val_loss)
-                    mean_val_loss = np.array(val_losses).mean()
-                    log.info("validation: epoch {}, iteration {}, loss: {}".format(e, i, mean_val_loss))
-                    if mean_val_loss < best_loss:
-                        best_loss = mean_val_loss
-                        model_monitor.save_model(epoch_count=e, msg="_new_best")
-    except KeyboardInterrupt:
-        log.info("Training was interrupted. Proceeding with image generation.")
-
-    # model_monitor.load_model(model_name="params_2ep_0.531473.npz", network=network)
-
+    # test by generating images
     for i in range(0, 10):
         image = X_test[[i], :, :, :]
         image[:, :, height // 2:, :] = 0
@@ -175,9 +165,8 @@ if __name__ == "__main__":
         for row_i in range(0, rest):
             for col_i in range(0, width):
                 for chan_i in range(0, input_channels):
-                    new_image = test_pass(image)
+                    new_image = binarize(test_pass(image))
                     # copy one generated pixel of one channel, then use it for the next generation
-                    image = image + data_mean
                     image[:, chan_i, height // 2 + row_i, col_i] = new_image[:, chan_i, height // 2 + row_i, col_i]
-                    image = image - data_mean
-        save_image(image[0, 0] + data_mean[0, 0], filename="data/generated/image_{}.jpg".format(i))
+        save_image(image[0, 0], filename="data/generated/image_{}.jpg".format(i))
+        log.info("generated image {}".format(i))

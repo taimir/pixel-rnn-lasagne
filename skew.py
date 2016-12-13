@@ -46,9 +46,7 @@ if __name__ == "__main__":
     input = T.tensor4("unskewed")
     f = theano.function(inputs=[input], outputs=skew(input))
     f_unskew = theano.function(inputs=[input], outputs=unskew(input))
-    in_arr = np.ones((1, 1, 6, 6), dtype=np.float32)
-    in_arr[:, :, 3, 4] = 0
-    in_arr[:, :, 1, 3] = 0
+    in_arr = np.arange(36, dtype=np.float32).reshape((1, 1, 6, 6))
     skewed_input = f(in_arr)
     print(skewed_input)
     print(f_unskew(skewed_input))

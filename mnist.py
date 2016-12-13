@@ -10,6 +10,10 @@ log.basicConfig(level=logging.DEBUG)
 mnist_path = os.path.join(os.path.dirname(__file__), 'data/mnist.pkl.gz')
 
 
+def binarize(images):
+    return (np.array(0.5) < images).astype('float32')
+
+
 def get_data():
     dataset = mnist_path
     import os
@@ -34,11 +38,14 @@ def load_data():
     with gzip.open(mnist_path, 'rb') as f:
         train_set, valid_set, test_set = pickle.load(f)
         train_x, _ = train_set
-        train_x = np.reshape(train_x*256, newshape=(train_x.shape[0], 1, 28, 28))
+        train_x = np.reshape(train_x, newshape=(train_x.shape[0], 1, 28, 28))
+        train_x = binarize(train_x)
         valid_x, _ = valid_set
-        valid_x = np.reshape(valid_x*256, newshape=(valid_x.shape[0], 1, 28, 28))
+        valid_x = np.reshape(valid_x, newshape=(valid_x.shape[0], 1, 28, 28))
+        valid_x = binarize(valid_x)
         test_x, _ = test_set
-        test_x = np.reshape(test_x*256, newshape=(test_x.shape[0], 1, 28, 28))
+        test_x = np.reshape(test_x, newshape=(test_x.shape[0], 1, 28, 28))
+        test_x = binarize(test_x)
 
         return {'x_train': np.asarray(train_x, dtype='int32'),
                 'x_valid': np.asarray(valid_x, dtype='int32'),

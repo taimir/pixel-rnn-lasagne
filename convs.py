@@ -16,6 +16,7 @@ class MaskedConv2D(lasagne.layers.Conv2DLayer):
         super(MaskedConv2D, self).__init__(incoming, num_filters, filter_size, stride=stride,
                                            pad="same", untie_biases=untie_biases, W=W, b=b,
                                            nonlinearity=nonlinearity,
+                                           flip_filters=False,
                                            convolution=T.nnet.conv2d, **kwargs)
         self.mask_type = mask_type
         self.n_colors = n_colors

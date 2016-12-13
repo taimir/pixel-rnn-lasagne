@@ -57,7 +57,7 @@ def mask(filter_size, n_in_chan, n_out_chan, n_colors, type):
 
 if __name__ == "__main__":
     input = T.tensor4("filter")
-    output = input * mask(filter_size=(3, 3), n_out_chan=4, n_in_chan=4, n_colors=3, type="b")
+    output = input * mask(filter_size=(3, 3), n_out_chan=4, n_in_chan=4, n_colors=1, type="a")
     f = theano.function(inputs=[input], outputs=output)
 
     masked = f(np.ones((4, 4, 3, 3), dtype=np.float32))
