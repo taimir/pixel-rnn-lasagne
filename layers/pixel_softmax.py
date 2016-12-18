@@ -1,5 +1,6 @@
 import lasagne
-from convs import MaskedConv2D
+
+from layers.convs import MaskedConv2D
 
 
 def pixel_softmax_reshape(network, n_colors=1):

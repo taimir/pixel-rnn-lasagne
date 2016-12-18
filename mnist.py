@@ -10,16 +10,13 @@ log.basicConfig(level=logging.DEBUG)
 mnist_path = os.path.join(os.path.dirname(__file__), 'data/mnist.pkl.gz')
 
 
-def binarize(images):
-    return (np.array(0.5) < images).astype('float32')
+def sample(images):
+    return np.random.binomial(1, p=images).astype(np.float32)
 
 
 def get_data():
     dataset = mnist_path
-    import os
-
     # Download the MNIST dataset if it is not present
-    # data_dir, data_file = os.path.split(dataset)
     if not os.path.isfile(dataset):
         from six.moves import urllib
         origin = (
@@ -39,15 +36,14 @@ def load_data():
         train_set, valid_set, test_set = pickle.load(f)
         train_x, _ = train_set
         train_x = np.reshape(train_x, newshape=(train_x.shape[0], 1, 28, 28))
-        train_x = binarize(train_x)
+        train_x = (train_x > 0.5).astype(np.int32)
         valid_x, _ = valid_set
         valid_x = np.reshape(valid_x, newshape=(valid_x.shape[0], 1, 28, 28))
-        valid_x = binarize(valid_x)
+        valid_x = (valid_x > 0.5).astype(np.int32)
         test_x, _ = test_set
         test_x = np.reshape(test_x, newshape=(test_x.shape[0], 1, 28, 28))
-        test_x = binarize(test_x)
+        test_x = (test_x > 0.5).astype(np.int32)
 
-        return {'x_train': np.asarray(train_x, dtype='int32'),
-                'x_valid': np.asarray(valid_x, dtype='int32'),
-                'x_test': np.asarray(test_x, dtype='int32')}
-
+        return {'x_train': train_x,
+                'x_valid': valid_x,
+                'x_test': test_x}
