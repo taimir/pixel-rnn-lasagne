@@ -1,6 +1,6 @@
 import os
 
-os.environ["THEANO_FLAGS"] = "device=gpu7,lib.cnmem=0"
+# os.environ["THEANO_FLAGS"] = "device=gpu7,lib.cnmem=0"
 
 import numpy as np
 import theano
@@ -122,46 +122,66 @@ if __name__ == "__main__":
     # train
     minibatch_count = X.shape[0] // batch_size
     val_minibatch_count = X_valid.shape[0] // batch_size
-    try:
-        for e in range(0, 10):
-            for i in range(0, minibatch_count):
-                y_next = y[i * batch_size:(i + 1) * batch_size]
-                X_next = X[i * batch_size:(i + 1) * batch_size]
-                loss, train_image = train_pass(X_next, y_next)
-                if i % 100 == 0:
-                    log.info("minibatch {} loss: {}".format(i, loss))
-                    save_image(sample(train_image)[0, 0], filename="data/trained_images/image_{}.jpg".format(i))
-                    save_image(y_next[0, 0], filename="data/original_images/image_{}.jpg".format(i))
+    # try:
+    #     for e in range(0, 10):
+    #         for i in range(0, minibatch_count):
+    #             y_next = y[i * batch_size:(i + 1) * batch_size]
+    #             X_next = X[i * batch_size:(i + 1) * batch_size]
+    #             loss, train_image = train_pass(X_next, y_next)
+    #             if i % 100 == 0:
+    #                 log.info("minibatch {} loss: {}".format(i, loss))
+    #                 save_image(sample(train_image)[0, 0], filename="data/trained_images/image_{}.jpg".format(i))
+    #                 save_image(y_next[0, 0], filename="data/original_images/image_{}.jpg".format(i))
+    #
+    #                 val_losses = list()
+    #                 for j in range(0, val_minibatch_count):
+    #                     y_val_next = y_valid[j * batch_size:(j + 1) * batch_size]
+    #                     x_val_next = X_valid[j * batch_size:(j + 1) * batch_size]
+    #                     val_loss, _ = validation_pass(x_val_next, y_val_next)
+    #                     val_losses.append(val_loss)
+    #                 mean_val_loss = np.array(val_losses).mean()
+    #                 log.info("validation: epoch {}, iteration {}, loss: {}".format(e, i, mean_val_loss))
+    #                 if mean_val_loss < best_loss:
+    #                     best_loss = mean_val_loss
+    #                     model_monitor.save_model(epoch_count=e, msg="new_best")
+    # except KeyboardInterrupt:
+    #     log.info("Training was interrupted. Proceeding with image generation.")
+    model_monitor.load_model(model_name="params_9ep_new_best.npz", network=network)
 
-                    val_losses = list()
-                    for j in range(0, val_minibatch_count):
-                        y_val_next = y_valid[j * batch_size:(j + 1) * batch_size]
-                        x_val_next = X_valid[j * batch_size:(j + 1) * batch_size]
-                        val_loss, _ = validation_pass(x_val_next, y_val_next)
-                        val_losses.append(val_loss)
-                    mean_val_loss = np.array(val_losses).mean()
-                    log.info("validation: epoch {}, iteration {}, loss: {}".format(e, i, mean_val_loss))
-                    if mean_val_loss < best_loss:
-                        best_loss = mean_val_loss
-                        model_monitor.save_model(epoch_count=e, msg="new_best")
-    except KeyboardInterrupt:
-        log.info("Training was interrupted. Proceeding with image generation.")
-    # model_monitor.load_model(model_name="params_3ep_new_best.npz", network=network)
+    # # test by generating images
+    # images = np.zeros((100, 1, 28, 28), dtype=np.float32)  # X_test[[i], :, :, :]
+    # images[:, :, height // 2:, :] = 0
+    #
+    # rest = height - (height // 2)
+    # for row_i in range(0, height):
+    #     for col_i in range(0, width):
+    #         for chan_i in range(0, input_channels):
+    #             new_images = sample(test_pass(images))
+    #             # copy one generated pixel of one channel, then use it for the next generation
+    #             images[:, chan_i, row_i, col_i] = new_images[:, chan_i, row_i, col_i]
+    #
+    # images = images.reshape((10, 10, 28, 28))
+    # images = images.transpose(1, 2, 0, 3)
+    # images = images.reshape((10 * 28, 10 * 28))
+    # scipy.misc.toimage(images, cmin=0.0, cmax=1.0).save("data/generated/images.jpg")
+    # log.info("generated images")
 
-    # test by generating images
-    images = np.zeros((100, 1, 28, 28), dtype=np.float32)  # X_test[[i], :, :, :]
-    images[:, :, height // 2:, :] = 0
+    from utils.visualization import dynamic_image
 
-    rest = height - (height // 2)
-    for row_i in range(0, height):
-        for col_i in range(0, width):
-            for chan_i in range(0, input_channels):
-                new_images = sample(test_pass(images))
-                # copy one generated pixel of one channel, then use it for the next generation
-                images[:, chan_i, row_i, col_i] = new_images[:, chan_i, row_i, col_i]
 
-    images = images.reshape((10, 10, 28, 28))
-    images = images.transpose(1, 2, 0, 3)
-    images = images.reshape((10 * 28, 10 * 28))
-    scipy.misc.toimage(images, cmin=0.0, cmax=1.0).save("data/generated/images.jpg")
-    log.info("generated images")
+    def image_gen():
+        for i in range(0, 100):
+            image = X_test[[i], :, :, :]
+            image[:, :, height // 2:, :] = 1
+
+            # show the image and keep refreshing it
+            for row_i in range(height // 2, height):
+                for col_i in range(0, width):
+                    for chan_i in range(0, input_channels):
+                        next = sample(test_pass(image))
+                        image[:, chan_i, row_i, col_i] = next[:, chan_i, row_i, col_i]
+                        img = scipy.misc.toimage(image[0, 0], cmin=0.0, cmax=1.0)
+                        yield img
+
+
+    dynamic_image(init_img=scipy.misc.toimage(X_test[0, 0], cmin=0.0, cmax=1.0), image_generator=image_gen)

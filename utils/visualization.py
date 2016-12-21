@@ -23,3 +23,27 @@ def save_network_graph(network, filename):
     from nolearn.lasagne.visualize import draw_to_file
     layers_debug = lasagne.layers.get_all_layers(network)
     draw_to_file(layers_debug, filename)
+
+
+def dynamic_image(init_img, image_generator):
+    from matplotlib.pyplot import subplots, close
+    from matplotlib import cm
+    from PIL import Image
+
+    """ Visualise the simulation using matplotlib, using blit for
+    improved speed"""
+    fig, ax = subplots(1, 1)
+    img = init_img.resize((500, 500), Image.ANTIALIAS)
+    im = ax.imshow(img, interpolation='nearest', cmap=cm.hot, animated=True)
+    fig.canvas.draw()
+    background = fig.canvas.copy_from_bbox(ax.bbox)  # cache the background
+    fig.show()
+
+    for img in image_generator():
+        img = img.resize((500, 500), Image.ANTIALIAS)
+        im.set_data(img)
+        fig.canvas.restore_region(background)  # restore background
+        ax.draw_artist(im)  # redraw the image
+        fig.canvas.blit(ax.bbox)  # redraw the axes rectangle
+
+    close(fig)
