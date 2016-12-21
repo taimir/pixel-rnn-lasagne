@@ -1,11 +1,3 @@
-def save_grayscale_image(image, filename):
-    import scipy
-    """
-    images.shape: (channels x height x width)
-    """
-    scipy.misc.toimage(image, mode='P').save('{}.png'.format(filename))
-
-
 def save_grayscale_images_grid(images, image_size, grid_size, filepath):
     import scipy
     assert images.shape[0] == grid_size[0] * grid_size[1], "Image count %d does not fit into grid (%d x %d)" % (
@@ -27,14 +19,13 @@ def save_network_graph(network, filename):
 
 def dynamic_image(init_img, image_generator):
     from matplotlib.pyplot import subplots, close
-    from matplotlib import cm
     from PIL import Image
 
     """ Visualise the simulation using matplotlib, using blit for
     improved speed"""
     fig, ax = subplots(1, 1)
     img = init_img.resize((500, 500), Image.ANTIALIAS)
-    im = ax.imshow(img, interpolation='nearest', cmap=cm.hot, animated=True)
+    im = ax.imshow(img, cmap="gray", animated=True)
     fig.canvas.draw()
     background = fig.canvas.copy_from_bbox(ax.bbox)  # cache the background
     fig.show()

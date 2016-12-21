@@ -1,3 +1,4 @@
 generated_*
 *.pkl.gz
 *.png
+!network_graph.png

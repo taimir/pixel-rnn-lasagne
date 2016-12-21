@@ -1,2 +1,2 @@
 from utils.model_monitor import ModelMonitor
-from utils.visualization import save_network_graph, save_grayscale_images_grid, save_grayscale_image
+from utils.visualization import save_network_graph, save_grayscale_images_grid, dynamic_image

@@ -10,6 +10,11 @@ from layers.pixel_softmax import pixel_softmax_reshape
 
 class PixelNetwork(object):
     def __init__(self, batch_size, image_shape, n_hidden):
+        """
+        :param batch_size: how many images to have in a single minibatch
+        :param image_shape: (channels x height x width)
+        :param n_hidden: number of hidden units in the MD-RNN
+        """
         self.batch_size = batch_size
         self.input_channels = image_shape[0]
         self.h = n_hidden
@@ -48,9 +53,20 @@ class PixelNetwork(object):
         """
         return None, None, None
 
+    @abc.abstractmethod
+    def get_name(self):
+        return None
+
 
 class PixelRNN(PixelNetwork):
     def __init__(self, batch_size, image_shape, n_hidden, depth=2):
+        """
+
+        :param batch_size: how many images to have in a single minibatch
+        :param image_shape: (channels x height x width)
+        :param n_hidden: number of hidden units in the MD-RNN
+        :param depth: how many MD-RNNs to stack on top of each other
+        """
         self.depth = depth
         super(PixelRNN, self).__init__(batch_size, image_shape, n_hidden)
 
@@ -96,3 +112,6 @@ class PixelRNN(PixelNetwork):
             output = lasagne.layers.get_output(network)
             loss = T.mean(lasagne.objectives.binary_crossentropy(output, labels))
         return network, loss, output
+
+    def get_name(self):
+        return "pixel_rnn"
