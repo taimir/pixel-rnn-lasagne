@@ -1,4 +1,7 @@
 import os
+
+os.environ["THEANO_FLAGS"] = "device=gpu0,lib.cnmem=1"
+
 import numpy as np
 import scipy
 import colorlog as log
@@ -59,7 +62,7 @@ def generate_images(model, model_monitor):
                 images[:, chan_i, row_i, col_i] = new_images[:, chan_i, row_i, col_i]
 
     save_grayscale_images_grid(images=images, image_size=(28, 28), grid_size=(10, 10),
-                               filepath=os.path.join(os.path.dirname(__file__), "data/generated/images.jpg"))
+                               filepath=os.path.join(os.path.dirname(__file__), "data/generated/generated.jpg"))
     log.info("Images generated under data/generated :) ")
 
 
@@ -121,5 +124,5 @@ if __name__ == "__main__":
     # USE MODEL
     # train_model(model=pixel_rnn, model_monitor=model_monitor, X=X, y=y, X_valid=X_valid, y_valid=y_valid,
     #             batch_size=batch_size)
-    test_model(model=pixel_rnn, model_monitor=model_monitor, X_test=X_test)
-    # generate_images(model=pixel_rnn, model_monitor=model_monitor)
+    # test_model(model=pixel_rnn, model_monitor=model_monitor, X_test=X_test)
+    generate_images(model=pixel_rnn, model_monitor=model_monitor)
