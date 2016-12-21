@@ -32,4 +32,4 @@ Original images (left) and the same images with their lower half completed by th
 
 Three steps of the dynamic pixel-by-pixel generation of an image:
 
-![Part1](./data/generated/generation_part1.png)
+![Part1](./data/generated/generation_part1.png) ![Part1](./data/generated/generation_part2.png) ![Part1](./data/generated/generation_part3.png)
