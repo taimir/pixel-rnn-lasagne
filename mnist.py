@@ -33,7 +33,7 @@ def load_data():
     """
     log.info("Loading data ...")
     with gzip.open(mnist_path, 'rb') as f:
-        train_set, valid_set, test_set = pickle.load(f)
+        train_set, valid_set, test_set = pickle.load(f, encoding='latin1')
         train_x, _ = train_set
         train_x = np.reshape(train_x, newshape=(train_x.shape[0], 1, 28, 28))
         train_x = (train_x > 0.5).astype(np.int32)

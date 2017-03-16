@@ -1,15 +1,17 @@
 import theano
 import theano.tensor as T
 import lasagne
-from skew import skew, unskew
+from layers.skew import skew, unskew
 
 
 class DiagLSTMLayer(lasagne.layers.Layer):
     def __init__(self, incoming, K_ss=lasagne.init.GlorotUniform(), backwards=False, **kwargs):
         super(DiagLSTMLayer, self).__init__(incoming, **kwargs)
 
-        self.K_ss = self.add_param(K_ss, (self.input_shape[1], self.input_shape[1] // 4, 2), name="K_ss")
-        self.b = self.add_param(lasagne.init.Constant(0.), (1,), name="K_ss_bias", regularizable=False)
+        self.K_ss = self.add_param(
+            K_ss, (self.input_shape[1], self.input_shape[1] // 4, 2), name="K_ss")
+        self.b = self.add_param(lasagne.init.Constant(0.), (1,),
+                                name="K_ss_bias", regularizable=False)
         self.backwards = backwards
 
     def get_output_shape_for(self, input_shape):
@@ -29,7 +31,8 @@ class DiagLSTMLayer(lasagne.layers.Layer):
 
         def process_column(x, c_prev, h_prev):
             # dim (batch_size x in_chan_dim x height)
-            column_in = lasagne.layers.InputLayer(input_var=h_prev, shape=(batch_size, in_chan_dim, height))
+            column_in = lasagne.layers.InputLayer(
+                input_var=h_prev, shape=(batch_size, in_chan_dim, height))
 
             # OK, conv1d with filter_size (2,) puts the value at the second position of the conv.
             # Which is ok for me, as long as I process the columns from top to bottom.

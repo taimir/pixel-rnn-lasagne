@@ -1,7 +1,7 @@
 import theano.tensor as T
 import lasagne
 
-from masks import mask
+from layers.masks import mask
 
 
 class MaskedConv2D(lasagne.layers.Conv2DLayer):
@@ -39,7 +39,8 @@ if __name__ == "__main__":
     input = T.tensor4("filter")
 
     input_layer = lasagne.layers.InputLayer(input_var=input, shape=(None, 1, 3, 3))
-    network = MaskedConv2D(incoming=input_layer, num_filters=4, filter_size=(3, 3), mask_type="a", n_colors=1)
+    network = MaskedConv2D(incoming=input_layer, num_filters=4,
+                           filter_size=(3, 3), mask_type="a", n_colors=1)
     output = lasagne.layers.get_output(network)
     f = theano.function(inputs=[input], outputs=output)
     test_image = np.ones((1, 1, 3, 3), dtype=np.float32)

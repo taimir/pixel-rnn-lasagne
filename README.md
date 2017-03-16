@@ -20,6 +20,19 @@ TODO:
 
 The PixelRNN implementation can converge to a decent solution in a few epochs of training on MNIST.
 
+### Dependencies
+Compatible with `Python >= 3.3`.
+
+System dependencies:
+```
+sudo apt-get install graphviz
+```
+
+Python dependencies:
+```
+pip install -r requirements.txt
+```
+
 ### Examples
 
 Images sampled (generated) from the Bi-Diag-LSTM:
